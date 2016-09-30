@@ -17,7 +17,7 @@ public class Main {
         stmt.execute("CREATE TABLE IF NOT EXISTS users(id IDENTITY, username VARCHAR, address VARCHAR, email VARCHAR)");
     }
 
-    public static void insertUser(Connection conn, int id, String username, String address, String email)throws SQLException{
+    public static void insertUser(Connection conn, Integer id, String username, String address, String email)throws SQLException{
         PreparedStatement stmt = conn.prepareStatement("INSERT INTO users VALUES(NULL, ?, ?, ?)");
         stmt.setString(1, username);
         stmt.setString(2, address);
@@ -51,7 +51,7 @@ public class Main {
         stmt.execute();
     }
 
-    public static void deleteUser(Connection conn, int id)throws SQLException{
+    public static void deleteUser(Connection conn, Integer id)throws SQLException{
         PreparedStatement stmt = conn.prepareStatement("DELETE FROM users WHERE id=?");
         stmt.setInt(1,id);
         stmt.execute();
@@ -67,11 +67,6 @@ public class Main {
 
         createTable(conn);
 
-        //takes external folder and points to it's location
-        Spark.externalStaticFileLocation("public");
-        //start spark engine
-        Spark.init();
-
         //call selectUsers and return data as json
         Spark.get("/user", ((request, response) -> {
             ArrayList<User> users = selectUsers(conn);
@@ -80,7 +75,26 @@ public class Main {
         }));
 
         Spark.post("/user", ((request, response) -> {
+            String body = request.body();
+            JsonParser p = new JsonParser();
+            p.parse(body, User.class);
+            User user = p.parse(body, User.class);
+            insertUser(conn, user.id,user.username,user.address,user.email);
+            return "";
+        }));
 
+        Spark.put("/user", ((request, response) -> {
+            String body = request.body();
+            JsonParser p = new JsonParser();
+            p.parse(body, User.class);
+            User user = p.parse(body, User.class);
+            updateUser(conn,user.username,user.address,user.email);
+            return "";
+        }));
+
+        Spark.delete("/user/:id", ((request, response) -> {
+            int id = Integer.parseInt(request.params(":id"));
+            deleteUser(conn,id);
             return "";
         }));
     }
